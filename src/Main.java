@@ -27,6 +27,8 @@ public class Main {
             String input = scanner.nextLine();
             System.out.print("You selected ");
 
+            if (input.equals("")) continue;
+
             Card selectedCard = getCardByID(player.getHand(), Integer.parseInt(input)-1);
             System.out.println(selectedCard.getCardName());
 
@@ -78,7 +80,7 @@ public class Main {
             }
 
             if (selectedCard.getCardType() == CardType.DISTANCE) {
-                if (haveToHelpSelf) {
+                if (!haveToHelpSelf) {
                     System.out.println("Are you sure you want to use distance card?");
                     String shouldHelp = scanner.nextLine();
 
@@ -88,6 +90,7 @@ public class Main {
                         player.addToHand(drawCard());
                     }
                 } else {
+                    System.out.println("You have to use green light first");
                     System.out.println("You want to remove your card? (type y to accept, type any to cancel)");
                     String shouldRemove = scanner.nextLine();
 
@@ -110,6 +113,10 @@ public class Main {
             Card card = distanceStack.get(i);
             totalDistance += card.getDistance();
             System.out.println(card.getDistance());
+        }
+
+        if (totalDistance > 1000) {
+            System.out.println("Game finished");
         }
 
         System.out.print("\nDrove " + totalDistance + " km");
