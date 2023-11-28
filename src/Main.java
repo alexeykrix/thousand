@@ -1,6 +1,7 @@
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 public class Main {
     private static Player player;
@@ -17,11 +18,12 @@ public class Main {
         drawInitialHand(player);
         drawInitialHand(opponent);
 
-
+        System.out.print("Enter your name: ");
+        String playerName = scanner.nextLine();
 
         for (; true ;) {
-            System.out.println("\033[H\033[2J");
-            renderPlayerStats(player);
+            renderPlayerStats(opponent, "BOT");
+            renderPlayerStats(player, playerName);
             renderPlayerCards(player);
             System.out.print("Select card: ");
             String input = scanner.nextLine();
@@ -37,6 +39,8 @@ public class Main {
             boolean canAttackOpponent = lastOpponentsCard.getCardType() == CardType.HELP;
             boolean haveToHelpSelf = lastPlacedCard.getCardType() == CardType.TROUBLE;
 
+            boolean turnMade = false;
+
             if (selectedCard.getCardType() == CardType.TROUBLE) {
                 if (canAttackOpponent) {
                     System.out.println("Are you sure you want stop your opponent (type y to accept, type any to cancel)");
@@ -46,6 +50,7 @@ public class Main {
                         opponent.placeCard(selectedCard);
                         player.removeFromHand(selectedCard);
                         player.addToHand(drawCard());
+                        turnMade = true;
                     }
                 } else {
                     System.out.println("You want to remove your card? (type y to accept, type any to cancel)");
@@ -54,6 +59,7 @@ public class Main {
                     if (shouldRemove.equals("y")) {
                         player.removeFromHand(selectedCard);
                         player.addToHand(drawCard());
+                        turnMade = true;
                     }
                 }
             }
@@ -67,6 +73,7 @@ public class Main {
                         player.placeCard(selectedCard);
                         player.removeFromHand(selectedCard);
                         player.addToHand(drawCard());
+                        turnMade = true;
                     }
                 } else {
                     System.out.println("You want to remove your card? (type y to accept, type any to cancel)");
@@ -75,6 +82,7 @@ public class Main {
                     if (shouldRemove.equals("y")) {
                         player.removeFromHand(selectedCard);
                         player.addToHand(drawCard());
+                        turnMade = true;
                     }
                 }
             }
@@ -88,6 +96,7 @@ public class Main {
                         player.addToDistanceStack(selectedCard);
                         player.removeFromHand(selectedCard);
                         player.addToHand(drawCard());
+                        turnMade = true;
                     }
                 } else {
                     System.out.println("You have to use green light first");
@@ -97,13 +106,73 @@ public class Main {
                     if (shouldRemove.equals("y")) {
                         player.removeFromHand(selectedCard);
                         player.addToHand(drawCard());
+                        turnMade = true;
                     }
                 }
+            }
+
+            if (turnMade) {
+                makeTurnBot(player, opponent);
             }
         }
     }
 
-    private static void renderPlayerStats(Player player) {
+    private static void makeTurnBot(Player player, Player opponent) {
+        Card lastPlayerCard = player.getPlacedCards().getLast();
+        Card lastBotCard = opponent.getPlacedCards().getLast();
+        boolean canAttackPlayer = lastPlayerCard.getCardType() == CardType.HELP;
+        boolean haveToHelpSelf = lastBotCard.getCardType() == CardType.TROUBLE;
+
+
+        List<Card> helpCards = opponent.getHand().stream()
+                .filter(card -> card.getCardType() == CardType.HELP)
+                .collect(Collectors.toList());
+
+        List<Card> atackCards = opponent.getHand().stream()
+                .filter(card -> card.getCardType() == CardType.TROUBLE)
+                .collect(Collectors.toList());
+
+        List<Card> distanceCards = opponent.getHand().stream()
+                .filter(card -> card.getCardType() == CardType.DISTANCE)
+                .collect(Collectors.toList());
+
+        Card helpCard = helpCards.size() > 0? helpCards.get(0) : null;
+        Card atackCard = atackCards.size() > 0? atackCards.get(0) : null;
+        Card distanceCard = atackCards.size() > 0? distanceCards.get(0) : null;
+
+        Random random = new Random();
+        int randomNumber = random.nextInt(2);
+
+        if (randomNumber == 1) {
+            atackCard = null;
+        }
+
+
+        if (haveToHelpSelf && helpCard != null) {
+            opponent.placeCard(helpCard);
+            opponent.removeFromHand(helpCard);
+            System.out.println("BOT used Green light");
+        }
+        else if (canAttackPlayer && atackCard != null) {
+            player.placeCard(atackCard);
+            opponent.removeFromHand(atackCard);
+            System.out.println("BOT stopped you");
+        }
+        else if (!haveToHelpSelf && distanceCard != null) {
+            opponent.addToDistanceStack(distanceCard);
+            opponent.removeFromHand(distanceCard);
+            System.out.println("BOT drove " + distanceCard.getDistance() + "km more");
+        }
+
+        else {
+            opponent.removeFromHand(opponent.getHand().get(0));
+        }
+
+        opponent.addToHand(drawCard());
+    }
+
+
+    private static void renderPlayerStats(Player player, String name) {
         List<Card> distanceStack = player.getDistanceStack();
         List<Card> placedStack = player.getPlacedCards();
 
@@ -112,11 +181,10 @@ public class Main {
         for (int i = 0; i < distanceStack.size(); i++) {
             Card card = distanceStack.get(i);
             totalDistance += card.getDistance();
-            System.out.println(card.getDistance());
         }
 
         if (totalDistance > 1000) {
-            System.out.println("Game finished");
+            System.out.println("Game finished! " +  name + " is the winner");
         }
 
         System.out.print("\nDrove " + totalDistance + " km");
@@ -126,8 +194,8 @@ public class Main {
         String status = "";
         CardType type = lastPlacedCard.getCardType();
 
-        if (type == CardType.TROUBLE) status = "\033[31mYou must place a card with a green light\033[0m";
-        if (type == CardType.HELP) status = "\033[32mYou can go\033[0m";
+        if (type == CardType.TROUBLE) status = "\033[31m" + name + " must place a card with a green light\033[0m";
+        if (type == CardType.HELP) status = "\033[32m" + name + " can go\033[0m";
 
         System.out.print(" " + status + "\n");
     }
